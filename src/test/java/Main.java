@@ -1,5 +1,4 @@
 import org.jvnet.winp.WinProcess;
-import org.jvnet.winp.Priority;
 
 /**
  * Test program.
@@ -8,7 +7,7 @@ import org.jvnet.winp.Priority;
 public class Main {
     public static void main(String[] args) {
         WinProcess p = new WinProcess(Integer.parseInt(args[0]));
-        p.killRecursively();
+        p.killRecursively(10 * 1000);
         // p.setPriority(Priority.BELOW_NORMAL);
     }
 }

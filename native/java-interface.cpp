@@ -3,8 +3,8 @@
 #include "winp.h"
 #include "auto_handle.h"
 
-JNIEXPORT jboolean JNICALL Java_org_jvnet_winp_Native_kill(JNIEnv* env, jclass clazz, jint pid, jboolean recursive) {
-	return KillProcessEx(pid, recursive);
+JNIEXPORT jboolean JNICALL Java_org_jvnet_winp_Native_kill(JNIEnv* env, jclass clazz, jint pid, jboolean recursive, jint gracefulShutdownTimeMs) {
+	return KillProcessEx(pid, recursive, gracefulShutdownTimeMs);
 }
 
 JNIEXPORT jint JNICALL Java_org_jvnet_winp_Native_setPriority(JNIEnv* env, jclass clazz, jint pid, jint priority) {

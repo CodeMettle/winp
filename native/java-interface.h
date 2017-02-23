@@ -13,7 +13,7 @@ extern "C" {
  * Signature: (IZ)Z
  */
 JNIEXPORT jboolean JNICALL Java_org_jvnet_winp_Native_kill
-  (JNIEnv *, jclass, jint, jboolean);
+  (JNIEnv *, jclass, jint, jboolean, jint);
 
 /*
  * Class:     org_jvnet_winp_Native

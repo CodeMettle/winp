@@ -2,9 +2,8 @@ package org.jvnet.winp;
 
 import java.lang.reflect.Field;
 import java.util.Comparator;
-import java.util.TreeMap;
 import java.util.Iterator;
-import java.util.logging.Level;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 
 import static java.util.logging.Level.FINE;
@@ -61,16 +60,16 @@ public class WinProcess {
      * Kills this process and all the descendant processes that
      * this process launched. 
      */
-    public void killRecursively() {
+    public void killRecursively(final int gracefulShutdownTimeMs) {
         if (LOGGER.isLoggable(FINE))
             LOGGER.fine(String.format("Attempting to recursively kill pid=%d (%s)",pid,getCommandLine()));
-        Native.kill(pid,true);
+        Native.kill(pid,true, gracefulShutdownTimeMs);
     }
 
-    public void kill() {
+    public void kill(final int gracefulShutdownTimeMs) {
         if (LOGGER.isLoggable(FINE))
             LOGGER.fine(String.format("Attempting to kill pid=%d (%s)",pid,getCommandLine()));
-        Native.kill(pid,false);
+        Native.kill(pid,false, gracefulShutdownTimeMs);
     }
 
     public boolean isCriticalProcess() {

@@ -1,10 +1,11 @@
-// taken from http://www.alexfedotov.com/articles/killproc.asp
+﻿// taken from http://www.alexfedotov.com/articles/killproc.asp
 //
 
 #include "stdafx.h"
 #include "winp.h"
 #include "auto_handle.h"
 #include "java-interface.h"
+#include "safetp.h"
 
 //---------------------------------------------------------------------------
 // KillProcess
@@ -17,10 +18,10 @@
 //  Returns:
 //	  TRUE, if successful, FALSE - otherwise.
 //
-DWORD WINAPI KillProcess(DWORD dwProcessId) {
+DWORD WINAPI KillProcess(DWORD dwProcessId, DWORD dwGracefulShutdownTimeMs) {
 	// first try to obtain handle to the process without the use of any
 	// additional privileges
-	auto_handle hProcess = OpenProcess(PROCESS_TERMINATE|PROCESS_QUERY_INFORMATION, FALSE, dwProcessId);
+	auto_handle hProcess = OpenProcess(PROCESS_TERMINATE|PROCESS_QUERY_INFORMATION|SYNCHRONIZE, FALSE, dwProcessId);
 	if (!hProcess) {
     	return GetLastError();
     }
@@ -32,7 +33,7 @@ DWORD WINAPI KillProcess(DWORD dwProcessId) {
         return ERROR_ACCESS_DENIED;
     }
 
-	if (TerminateProcess(hProcess, (UINT)-1)) {
+	if (SafeTerminateProcess(dwProcessId, hProcess, (UINT)-1, dwGracefulShutdownTimeMs)) {
 	// completed successfully
 		return ERROR_SUCCESS;
 	}
@@ -120,7 +121,7 @@ typedef struct _SYSTEM_PROCESSES {
 //  Returns:
 //	  Win32 error code.
 //
-DWORD WINAPI KillProcessTreeNtHelper(PSYSTEM_PROCESSES pInfo, DWORD dwProcessId) {
+DWORD WINAPI KillProcessTreeNtHelper(PSYSTEM_PROCESSES pInfo, DWORD dwProcessId, DWORD dwGracefulShutdownTimeMs) {
 	_ASSERTE(pInfo != NULL);
 
     PSYSTEM_PROCESSES p = pInfo;
@@ -129,7 +130,7 @@ DWORD WINAPI KillProcessTreeNtHelper(PSYSTEM_PROCESSES pInfo, DWORD dwProcessId)
     for (;;)
     {
 		if (p->InheritedFromProcessId == dwProcessId)
-			KillProcessTreeNtHelper(pInfo, p->ProcessId);
+			KillProcessTreeNtHelper(pInfo, p->ProcessId, dwGracefulShutdownTimeMs);
 
 		if (p->NextEntryDelta == 0)
 			break;
@@ -139,7 +140,7 @@ DWORD WINAPI KillProcessTreeNtHelper(PSYSTEM_PROCESSES pInfo, DWORD dwProcessId)
     }
 
 	// kill the process itself
-    if (!KillProcess(dwProcessId))
+    if (!KillProcess(dwProcessId, dwGracefulShutdownTimeMs))
 		return GetLastError();
 
 	return ERROR_SUCCESS;
@@ -205,7 +206,7 @@ DWORD WINAPI FreeProcessList(HANDLE hHeap, PTREE_PROCESS root) {
 //  Returns:
 //	  Win32 error code.
 //
-DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
+DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId, DWORD dwGracefulShutdownTimeMs) {
 	// first, open a handle to the process with sufficient access to query for
 	// its times. those are needed in order to filter "children" because Windows
 	// processes, unlike Unix/Linux processes, do not reparent when the process
@@ -227,7 +228,7 @@ DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
 		// if unable to check the creation time for the process, it is impossible
 		// to safely kill any children processes; just kill the root process and
 		// leave it at that
-		return KillProcess(dwProcessId);
+		return KillProcess(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 
 	// next, create a snapshot of all the running processes. this will be used
@@ -238,7 +239,7 @@ DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
 	if (!hSnapshot) {
 		// if unable to open a snapshot of the currently-running processes, just
 		// kill the root process and leave it at that
-		return KillProcess(dwProcessId);
+		return KillProcess(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 
 	PROCESSENTRY32 pEntry;
@@ -246,14 +247,14 @@ DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
 
 	HANDLE hHeap = GetProcessHeap();
 	if (!hHeap) {
-		return KillProcess(dwProcessId);
+		return KillProcess(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 
 	PTREE_PROCESS root = (PTREE_PROCESS) HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(TREE_PROCESS));
 	if (!root) {
 		// couldn't allocate memory for the TREE_PROCESS, which means we won't be able
 		// to build the list; just kill the root process and leave it at that
-		return KillProcess(dwProcessId);
+		return KillProcess(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 	root->processId = dwProcessId;
 
@@ -323,7 +324,7 @@ DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
 	DWORD result;
 	PTREE_PROCESS temp;
 	while (last) {
-		result = KillProcess(last->processId);
+		result = KillProcess(last->processId, dwGracefulShutdownTimeMs);
 
 		temp = last;
 		last = last->previous;
@@ -348,9 +349,9 @@ DWORD WINAPI KillProcessTreeWinHelper(DWORD dwProcessId) {
 //  Returns:
 //	  TRUE, if successful, FALSE - otherwise.
 //
-BOOL WINAPI KillProcessEx(DWORD dwProcessId, BOOL bTree) {
+BOOL WINAPI KillProcessEx(DWORD dwProcessId, BOOL bTree, DWORD dwGracefulShutdownTimeMs) {
 	if (!bTree) {
-		return KillProcess(dwProcessId);
+		return KillProcess(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 
 	OSVERSIONINFO osvi;
@@ -400,14 +401,14 @@ BOOL WINAPI KillProcessEx(DWORD dwProcessId, BOOL bTree) {
 
 		// call the helper function
 		dwError = KillProcessTreeNtHelper((PSYSTEM_PROCESSES)pBuffer,
-										  dwProcessId);
+										  dwProcessId, dwGracefulShutdownTimeMs);
 
 		HeapFree(hHeap, 0, pBuffer);
 	}
 	else
 	{
 		// call the helper function
-		dwError = KillProcessTreeWinHelper(dwProcessId);
+		dwError = KillProcessTreeWinHelper(dwProcessId, dwGracefulShutdownTimeMs);
 	}
 
 	SetLastError(dwError);

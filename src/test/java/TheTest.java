@@ -26,7 +26,7 @@ public class TheTest extends Assert {
                 if (p.getCommandLine().contains("csrss")) {
                     found = true;
                     assertTrue(p.isCriticalProcess());
-                    p.kill();   // this should fail (but if the test fails, then we'll see BSoD
+                    p.kill(10 * 1000);   // this should fail (but if the test fails, then we'll see BSoD
                 }
             } catch (WinpException e) {
             }
@@ -88,7 +88,7 @@ public class TheTest extends Assert {
         assertEquals("foobar", wp.getEnvironmentVariables().get("TEST"));
 
         Thread.sleep(100);
-        wp.killRecursively();
+        wp.killRecursively(10 * 1000);
     }
 
     @BeforeClass
