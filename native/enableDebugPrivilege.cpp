@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "winp.h"
 #include "java-interface.h"
-#include "auto_handle.h"
+#include "winplib\auto_handle.h"
 
 // TODO: error check improvements
 JNIEXPORT void JNICALL Java_org_jvnet_winp_Native_enableDebugPrivilege(JNIEnv* env, jclass _) {

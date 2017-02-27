@@ -3,18 +3,8 @@
 // are changed infrequently
 #pragma once
 
-#define _WIN32_WINNT 0x500
+#include "targetver.h"
 
-#include <windows.h>
-#include <tchar.h>
-#include <tlhelp32.h>
 #include <jni.h>
-#include <psapi.h>
-#pragma comment(lib, "psapi.lib")
-// if you don't have ntdll.lib, download Windows DDK
-// 32bit version should be from lib/wxp/i386 (Windows XP)
-// 64bit version should be from lib/wnet/amd64 (Windows 2003 Server)
-#pragma comment(lib, "ntdll.lib")
-
-#define _ASSERTE(x)		;
+#include "winplib\killproc.h"
 //#include <crtdbg.h>

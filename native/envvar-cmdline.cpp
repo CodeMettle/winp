@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "winp.h"
 #include "java-interface.h"
-#include "auto_handle.h"
+#include "winplib\auto_handle.h"
 
 // 32bit pointer type for wow64
 // TODO: there are probably better ways to define this
